@@ -1,0 +1,74 @@
+[
+  {
+    "code": "ALMA-7842",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #1"
+  },
+  {
+    "code": "ALMA-3914",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #2"
+  },
+  {
+    "code": "ALMA-5820",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #3"
+  },
+  {
+    "code": "ALMA-6471",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #4"
+  },
+  {
+    "code": "ALMA-8293",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #5"
+  },
+  {
+    "code": "ALMA-1058",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #6"
+  },
+  {
+    "code": "ALMA-9347",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #7"
+  },
+  {
+    "code": "ALMA-4126",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #8"
+  },
+  {
+    "code": "ALMA-2785",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #9"
+  },
+  {
+    "code": "ALMA-6039",
+    "status": "available",
+    "durationDays": 30,
+    "note": "Código inicial Wompi #10"
+  },
+  {
+    "code": "VISHUDA2026",
+    "status": "available",
+    "durationDays": 365,
+    "note": "Código Maestro Fundadora"
+  },
+  {
+    "code": "ESSENTIA2026",
+    "status": "available",
+    "durationDays": 365,
+    "note": "Código Maestro VIP"
+  }
+]

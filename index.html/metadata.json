@@ -1,0 +1,6 @@
+{
+  "name": "Vishuda Essentia · Autoconocimiento y Patrones",
+  "description": "Plataforma de autoconocimiento, check-in diario, tendencias e insights emocionales con visualización de datos, oráculo de intención y regulación somática.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

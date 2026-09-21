@@ -1,0 +1,24 @@
+{
+  "name": "Vishuda Essentia",
+  "short_name": "Vishuda",
+  "description": "Autoconocimiento, check-in diario, lanzamientos de Alma y regulación somática.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#091a15",
+  "theme_color": "#091a15",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/vite.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
