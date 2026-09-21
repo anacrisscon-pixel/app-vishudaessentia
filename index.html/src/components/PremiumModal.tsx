@@ -30,6 +30,7 @@ import {
   ChevronUp,
   MessageCircle,
 } from 'lucide-react';
+import { openWompiCheckout } from '../config/payments';
 
 interface PremiumModalProps {
   onBack: () => void;
@@ -63,11 +64,6 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ onBack, onActivated 
 
   const deviceId = getDeviceId();
 
-  // Wompi link
-  const WOMPI_LINK =
-    (import.meta as any).env?.VITE_WOMPI_PAYMENT_URL ||
-    'https://checkout.wompi.co/l/VISHUDA_CONTINUO';
-
   const WHATSAPP_SUPPORT_URL =
     (import.meta as any).env?.VITE_WHATSAPP_SUPPORT_URL ||
     'https://wa.me/?text=' +
@@ -87,7 +83,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ onBack, onActivated 
   }, []);
 
   const handlePay = () => {
-    window.open(WOMPI_LINK, '_blank');
+    openWompiCheckout();
   };
 
   const handleOpenWhatsApp = () => {

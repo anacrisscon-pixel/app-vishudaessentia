@@ -1,6 +1,7 @@
 import React from 'react';
 import { CreditCard, ExternalLink, ShieldAlert, Sparkles, RefreshCw, Smartphone, KeyRound, MessageCircle } from 'lucide-react';
 import { MembershipData } from '../utils/storage';
+import { openWompiCheckout } from '../config/payments';
 
 interface ExpiredNoticeScreenProps {
   membership: MembershipData;
@@ -13,10 +14,6 @@ export const ExpiredNoticeScreen: React.FC<ExpiredNoticeScreenProps> = ({
   onGoToActivation,
   onDismissToExploreFree,
 }) => {
-  const WOMPI_LINK =
-    (import.meta as any).env?.VITE_WOMPI_PAYMENT_URL ||
-    'https://checkout.wompi.co/l/VISHUDA_CONTINUO';
-
   const WHATSAPP_SUPPORT_URL =
     (import.meta as any).env?.VITE_WHATSAPP_SUPPORT_URL ||
     'https://wa.me/?text=' +
@@ -25,7 +22,7 @@ export const ExpiredNoticeScreen: React.FC<ExpiredNoticeScreenProps> = ({
       );
 
   const handlePayWompi = () => {
-    window.open(WOMPI_LINK, '_blank');
+    openWompiCheckout();
   };
 
   const handleOpenWhatsApp = () => {
