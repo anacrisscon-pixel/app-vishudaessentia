@@ -252,7 +252,7 @@ ${bodyZone ? `Sensación corporal: "${bodyZone}"` : ""}
 Analiza detalladamente esta vivencia real y responde con el esquema JSON indicado.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+      model: "gemini-2.5-flash",
       contents: userPrompt,
       config: {
         systemInstruction,
@@ -292,7 +292,7 @@ Analiza detalladamente esta vivencia real y responde con el esquema JSON indicad
       almaPregunta: parsed.almaPregunta,
       almaGiroReencuadre: parsed.almaGiroReencuadre || "Coloca una mano sobre tu pecho, exhala despacio y permite que tu cuerpo recuerde que en este instante estás a salvo contigo.",
       source: "alma-gemini",
-      model: "gemini-3.8-flash",
+      model: "gemini-2.5-flash",
     });
   } catch (err: any) {
     console.error("Gemini API error in Alma endpoint, using heuristic fallback:", err?.message || err);
@@ -309,7 +309,7 @@ Analiza detalladamente esta vivencia real y responde con el esquema JSON indicad
 app.get("/api/ai-status", (_req, res) => {
   res.json({
     geminiAvailable: Boolean(process.env.GEMINI_API_KEY),
-    model: "gemini-3.8-flash",
+    model: "gemini-2.5-flash",
     engine: "Google Gemini 3.8 Flash (Official SDK @google/genai)",
     timestamp: new Date().toISOString(),
   });
@@ -692,3 +692,4 @@ async function startServer() {
 }
 
 startServer();
+"Cambiar a modelo gratuito gemini-2.5-flash"
