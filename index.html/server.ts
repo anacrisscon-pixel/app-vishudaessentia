@@ -692,4 +692,3 @@ async function startServer() {
 }
 
 startServer();
-"Cambiar a modelo gratuito gemini-2.5-flash"
