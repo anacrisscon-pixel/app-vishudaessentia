@@ -30,7 +30,6 @@ import {
   ChevronUp,
   MessageCircle,
 } from 'lucide-react';
-import { openWompiCheckout } from '../config/payments';
 
 interface PremiumModalProps {
   onBack: () => void;
@@ -64,6 +63,11 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ onBack, onActivated 
 
   const deviceId = getDeviceId();
 
+  // Wompi link
+  const WOMPI_LINK =
+    (import.meta as any).env?.VITE_WOMPI_PAYMENT_URL ||
+    'https://checkout.wompi.co/l/VISHUDA_CONTINUO';
+
   const WHATSAPP_SUPPORT_URL =
     (import.meta as any).env?.VITE_WHATSAPP_SUPPORT_URL ||
     'https://wa.me/?text=' +
@@ -83,7 +87,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ onBack, onActivated 
   }, []);
 
   const handlePay = () => {
-    openWompiCheckout();
+    window.open(WOMPI_LINK, '_blank');
   };
 
   const handleOpenWhatsApp = () => {
@@ -381,7 +385,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ onBack, onActivated 
               Tu período de 30 días ha finalizado
             </h2>
             <p className="text-xs text-[#52665e] mt-1 leading-relaxed">
-              Tu último acompañamiento venció el {formatDate(membership.expiresAt)}. Para reactivar los nuevos Lunes de Alma, los 14 Casos Reales y tu Espejo IA de Alma, renueva tu membresía a través de Wompi.
+              Tu último acompañamiento venció el {formatDate(membership.expiresAt)}. Para reactivar los nuevos Lunes de Alma, los 30 Casos de la Vida Real y tu Espejo IA de Alma, renueva tu membresía a través de Wompi.
             </p>
           </div>
 
@@ -434,7 +438,7 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ onBack, onActivated 
             </div>
             <div className="flex items-start gap-2.5">
               <Sparkles className="w-4 h-4 text-[#ead08f] flex-shrink-0 mt-0.5" />
-              <span>14 Casos Reales: desglose de detonantes, mecanismos y heridas</span>
+              <span>30 Casos de la Vida Real: desglose de detonantes, mecanismos y heridas</span>
             </div>
             <div className="flex items-start gap-2.5">
               <Sparkles className="w-4 h-4 text-[#ead08f] flex-shrink-0 mt-0.5" />
@@ -574,25 +578,20 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ onBack, onActivated 
       </div>
 
       {/* ======================================================= */}
-      {/* ADMIN CODES MANAGER (FOR ANA CRISTINA / OWNER) */}
+      {/* ADMIN CODES ACCESS (SECURE & DISCREET FOR OWNER ONLY) */}
       {/* ======================================================= */}
-      <div className="pt-4 border-t border-[#d2dfd8]/60">
-        <button
-          onClick={() => {
-            setShowAdminPanel(!showAdminPanel);
-            if (!isAdminAuthenticated) {
-              handleAdminLogin('ALMA_ADMIN_2026');
-            }
-          }}
-          className="text-[11px] text-[#52665e] hover:text-[#0e2721] flex items-center gap-1.5 mx-auto font-medium transition-all"
-        >
-          <Lock className="w-3 h-3 text-[#1b5e4b]" />
-          <span>Panel de Gestión de Códigos Wompi (Administradora)</span>
-          {showAdminPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        </button>
-
-        {showAdminPanel && (
-          <div className="mt-4 bg-[#f8faf8] border-2 border-[#1b5e4b]/40 rounded-3xl p-5 space-y-4 animate-fadeIn text-xs">
+      <div className="pt-4 border-t border-[#d2dfd8]/60 text-center">
+        {!showAdminPanel ? (
+          <button
+            onClick={() => setShowAdminPanel(true)}
+            className="text-[10px] text-[#8ea39b] hover:text-[#1b5e4b] inline-flex items-center gap-1 font-medium transition-colors cursor-pointer py-1"
+            title="Acceso restringido para administración"
+          >
+            <Lock className="w-2.5 h-2.5" />
+            <span>Administración</span>
+          </button>
+        ) : (
+          <div className="mt-2 bg-[#f8faf8] border-2 border-[#1b5e4b]/40 rounded-3xl p-5 space-y-4 animate-fadeIn text-xs text-left">
             <div className="flex justify-between items-start">
               <div>
                 <b className="text-sm font-bold text-[#0e2721] block flex items-center gap-1.5 font-serif">
@@ -605,37 +604,39 @@ export const PremiumModal: React.FC<PremiumModalProps> = ({ onBack, onActivated 
               </div>
 
               <button
-                onClick={() => handleAdminLogin(adminPinInput || 'ALMA_ADMIN_2026')}
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1 hover:bg-emerald-200"
+                onClick={() => setShowAdminPanel(false)}
+                className="text-[11px] text-stone-500 hover:text-stone-800 font-semibold px-2 py-1 cursor-pointer"
               >
-                <RefreshCw className="w-3 h-3" />
-                <span>Actualizar</span>
+                Cerrar ✕
               </button>
             </div>
 
             {!isAdminAuthenticated ? (
               <div className="bg-white p-4 rounded-2xl border border-gray-200 space-y-2.5">
                 <label className="text-[11px] font-bold text-gray-700 block">
-                  Ingresa tu PIN de Administradora:
+                  Ingresa tu PIN confidencial de Administradora:
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="password"
                     value={adminPinInput}
                     onChange={(e) => setAdminPinInput(e.target.value)}
-                    placeholder="PIN (Por defecto: ALMA_ADMIN_2026)"
-                    className="flex-1 p-2 rounded-xl border border-gray-300 text-xs outline-none"
+                    placeholder="PIN confidencial"
+                    className="flex-1 p-2 rounded-xl border border-gray-300 text-xs outline-none focus:border-[#144436]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAdminLogin();
+                    }}
                   />
                   <button
                     onClick={() => handleAdminLogin()}
-                    disabled={isLoadingAdminCodes}
-                    className="px-4 py-2 rounded-xl bg-[#0e2721] text-[#ead08f] font-bold text-xs"
+                    disabled={isLoadingAdminCodes || !adminPinInput.trim()}
+                    className="px-4 py-2 rounded-xl bg-[#0e2721] text-[#ead08f] font-bold text-xs disabled:opacity-50 cursor-pointer"
                   >
-                    Ingresar
+                    {isLoadingAdminCodes ? 'Verificando...' : 'Ingresar'}
                   </button>
                 </div>
                 {adminPinError && (
-                  <p className="text-red-600 text-[11px]">{adminPinError}</p>
+                  <p className="text-red-600 text-[11px] font-medium">{adminPinError}</p>
                 )}
               </div>
             ) : (

@@ -373,10 +373,18 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({
             <Shield className="w-3 h-3 text-[#ead08f]" />
             <span>Espacio 100% privado y confidencial</span>
           </span>
-          {aiEngineStatus?.geminiAvailable && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0e2721] text-[#ead08f] flex items-center gap-1 border border-[#c5a059]/40">
+          {aiEngineStatus?.geminiAvailable ? (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0e2721] text-[#ead08f] flex items-center gap-1 border border-[#c5a059]/40"
+              title="Conexión activa con la API oficial de Google Gemini"
+            >
               <Sparkles className="w-3 h-3 text-[#ead08f]" />
-              <span>Google Gemini Activo</span>
+              <span>Google Gemini Activo ({aiEngineStatus.model || '3.8 Flash'})</span>
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1b5e4b] text-[#ead08f] flex items-center gap-1 border border-[#c5a059]/40">
+              <Sparkles className="w-3 h-3 text-[#ead08f]" />
+              <span>Motor Espejo Activo</span>
             </span>
           )}
         </div>

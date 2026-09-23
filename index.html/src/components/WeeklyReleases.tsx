@@ -17,14 +17,10 @@ import {
   Bookmark,
   ArrowLeft,
   Volume2,
-  Mic,
-  Square,
-  Trash2,
   Check,
   Radio,
   BookOpen,
   Heart,
-  Sliders,
   RotateCcw,
 } from 'lucide-react';
 
@@ -54,41 +50,33 @@ export const WeeklyReleases: React.FC<WeeklyReleasesProps> = ({
 
   // Background ambience selection for voice reading
   const [selectedAmbience, setSelectedAmbience] = useState<string>('/sounds/arroyo-bosque.mp3');
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>('');
 
-  // Custom recorded or linked audios per week
-  const [customAudios, setCustomAudios] = useState<Record<string, string>>(() => {
-    try {
-      const saved = localStorage.getItem('vishuda_custom_weekly_audios');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  // Voice recording studio state
-  const [showStudio, setShowStudio] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recSeconds, setRecSeconds] = useState(0);
-  const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
-  const [customUrlInput, setCustomUrlInput] = useState('');
-  const [savedSuccessMsg, setSavedSuccessMsg] = useState(false);
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recTimerRef = useRef<any>(null);
+  // Playback audio element ref
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const progressTimerRef = useRef<any>(null);
 
-  const activeAudioSource = customAudios[selectedWeek.id] || selectedWeek.audioUrl;
+  const activeAudioSource = selectedWeek.audioUrl;
 
   useEffect(() => {
+    const updateVoices = () => {
+      const current = soulPillsVoice.getSelectedVoice();
+      if (current) {
+        setSelectedVoiceName(current.name);
+      }
+    };
+
+    updateVoices();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+
     return () => {
       soulPillsVoice.stop();
       audioEngine.stop();
       if (audioElementRef.current) {
         audioElementRef.current.pause();
       }
-      if (recTimerRef.current) clearInterval(recTimerRef.current);
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     };
   }, []);
@@ -106,7 +94,7 @@ export const WeeklyReleases: React.FC<WeeklyReleasesProps> = ({
     setSelectedWeek(pill);
   };
 
-  // Toggle playback: User recorded audio vs. Soul Voice Narrator (Voz de Alma)
+  // Toggle playback: Soul Voice Narrator (Voz de Alma) or direct audio
   const handleTogglePlay = (pill: WeeklyRelease = selectedWeek) => {
     const isAccessible = pill.isUnlocked || isPremium;
     if (!isAccessible) {
@@ -114,8 +102,8 @@ export const WeeklyReleases: React.FC<WeeklyReleasesProps> = ({
       return;
     }
 
-    // If user has uploaded or recorded their own voice for this week:
-    const customSource = customAudios[pill.id] || pill.audioUrl;
+    // If pill has an explicit audioUrl:
+    const customSource = pill.audioUrl;
 
     if (customSource) {
       if (isPlaying) {
@@ -178,71 +166,6 @@ export const WeeklyReleases: React.FC<WeeklyReleasesProps> = ({
     setIsPaused(false);
     setElapsedSeconds(0);
     setVoiceProgressPercent(0);
-  };
-
-  // Recording controls
-  const startRecordingAudio = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioChunksRef.current = [];
-      const mr = new MediaRecorder(stream);
-      mediaRecorderRef.current = mr;
-
-      mr.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      mr.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(audioBlob);
-        setRecordedBlobUrl(url);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      mr.start(200);
-      setIsRecording(true);
-      setRecSeconds(0);
-
-      recTimerRef.current = setInterval(() => {
-        setRecSeconds((prev) => prev + 1);
-      }, 1000);
-    } catch {
-      alert('Por favor autoriza el micrófono para grabar tu píldora de voz.');
-    }
-  };
-
-  const stopRecordingAudio = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (recTimerRef.current) clearInterval(recTimerRef.current);
-    }
-  };
-
-  const saveRecordedAudioToWeek = () => {
-    const toSave = recordedBlobUrl || customUrlInput.trim();
-    if (!toSave) return;
-
-    const updated = { ...customAudios, [selectedWeek.id]: toSave };
-    setCustomAudios(updated);
-    try {
-      localStorage.setItem('vishuda_custom_weekly_audios', JSON.stringify(updated));
-    } catch {}
-
-    setSavedSuccessMsg(true);
-    setTimeout(() => setSavedSuccessMsg(false), 3000);
-  };
-
-  const removeCustomAudio = (weekId: string) => {
-    const updated = { ...customAudios };
-    delete updated[weekId];
-    setCustomAudios(updated);
-    try {
-      localStorage.setItem('vishuda_custom_weekly_audios', JSON.stringify(updated));
-    } catch {}
-    if (isPlaying) {
-      handleStopVoice();
-    }
   };
 
   const totalDurationSecs = selectedWeek.durationMinutes * 60;
@@ -340,106 +263,112 @@ export const WeeklyReleases: React.FC<WeeklyReleasesProps> = ({
           className="hidden"
         />
 
-        {/* VOICE PLAYER BOX */}
-        <div className="bg-gradient-to-r from-[#0c221c] via-[#143e32] to-[#184a3b] rounded-2xl p-5 text-white shadow-md space-y-4 border border-[#c5a059]/40">
-          <div className="flex items-center justify-between">
+        {/* MINIMALIST FEMALE VOICE TTS PLAYER */}
+        <div className="bg-[#0f2e24] rounded-2xl p-4 sm:p-5 text-white shadow-md border border-[#c5a059]/30 space-y-3.5">
+          {/* Top row: Status & Female Voice indicator */}
+          <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#ead08f] animate-ping" />
-              <span className="text-[11px] uppercase font-bold tracking-wider text-[#ead08f]">
-                {activeAudioSource ? '🎙️ Tu Voz Grabada de Alma' : '🎙️ Voz Guiada: Alma (Ritmo Íntimo & Pausado)'}
+              <span className={`w-2 h-2 rounded-full ${isPlaying && !isPaused ? 'bg-[#ead08f] animate-pulse' : 'bg-[#739286]'}`} />
+              <span className="text-[11px] font-medium tracking-wide text-[#cfe1d9]">
+                {activeAudioSource ? 'Audio cargado' : 'Voz Femenina Suave y Cálida'}
               </span>
             </div>
 
-            {isPlaying && !isPaused && (
-              <span className="text-[11px] text-[#cfe1d9] font-mono flex items-center gap-1">
-                <Volume2 className="w-3.5 h-3.5 text-[#ead08f]" />
-                <span>Narrando...</span>
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {isPlaying && !isPaused && (
+                <span className="text-[10px] font-mono text-[#ead08f] flex items-center gap-1">
+                  <Volume2 className="w-3 h-3" />
+                  <span>Reproduciendo</span>
+                </span>
+              )}
+              {isPaused && (
+                <span className="text-[10px] font-mono text-[#cfe1d9]/70">Pausado</span>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Play/Pause Button */}
+          {/* Center row: Play/Pause button + Track Info + Minimal Progress Bar */}
+          <div className="flex items-center gap-3.5">
+            {/* Play/Pause Minimal Button */}
             <button
               onClick={() => handleTogglePlay(selectedWeek)}
-              className="w-14 h-14 rounded-full bg-gradient-to-r from-[#ead08f] to-[#c5a059] text-[#0c221c] flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform flex-shrink-0 cursor-pointer"
-              title={isPlaying && !isPaused ? 'Pausar narración' : 'Escuchar píldora con Voz de Alma'}
+              className="w-12 h-12 rounded-full bg-[#ead08f] hover:bg-[#dfc47f] text-[#0a1e17] flex items-center justify-center shadow transition-all cursor-pointer flex-shrink-0 active:scale-95"
+              title={isPlaying && !isPaused ? 'Pausar' : 'Escuchar con voz femenina'}
+              aria-label={isPlaying && !isPaused ? 'Pausar' : 'Reproducir'}
             >
               {isPlaying && !isPaused ? (
-                <Pause className="w-6 h-6 fill-current" />
+                <Pause className="w-5 h-5 fill-current" />
               ) : (
-                <Play className="w-6 h-6 fill-current ml-0.5" />
+                <Play className="w-5 h-5 fill-current ml-0.5" />
               )}
             </button>
 
-            {/* Stop / Reset Button */}
+            {/* Stop/Restart button */}
             {isPlaying && (
               <button
                 onClick={handleStopVoice}
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer"
-                title="Detener voz"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
+                title="Reiniciar lectura"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-3.5 h-3.5" />
               </button>
             )}
 
-            {/* Track Info & Progress Bar */}
+            {/* Title & Progress Slider */}
             <div className="flex-1 min-w-0 space-y-1.5">
-              <b className="text-sm text-white block truncate">
-                {selectedWeek.audioTitle}
-              </b>
-              <p className="text-[11px] text-[#cfe1d9] truncate">
-                {activeAudioSource
-                  ? 'Audio exclusivo vinculado'
-                  : 'Voz suave con pausas reales de reflexión (3-4s)'}
-              </p>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-white truncate max-w-[200px] sm:max-w-xs">
+                  {selectedWeek.title}
+                </span>
+                <span className="font-mono text-[10px] text-[#cfe1d9] flex-shrink-0">
+                  {formatTimer(elapsedSeconds)} / {selectedWeek.durationMinutes}:00
+                </span>
+              </div>
 
-              {/* Progress bar */}
-              <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
+              {/* Minimal Slim Progress Bar */}
+              <div className="w-full bg-white/15 h-1.5 rounded-full overflow-hidden">
                 <div
                   className="bg-[#ead08f] h-full rounded-full transition-all duration-300"
-                  style={{ width: `${Math.max(4, progressPercent)}%` }}
+                  style={{ width: `${Math.max(2, progressPercent)}%` }}
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-between items-center text-[11px] text-[#cfe1d9] font-mono px-1">
-            <span>{formatTimer(elapsedSeconds)}</span>
-            {!activeAudioSource && totalSegments > 0 && (
-              <span className="text-[10px] text-[#ead08f]">
-                Párrafo {currentSegmentIdx + 1} de {totalSegments}
-              </span>
-            )}
-            <span>{selectedWeek.durationMinutes}:00 min</span>
-          </div>
-
-          {/* Ambient Background Audio Selector (when using Speech Synth) */}
+          {/* Bottom row: Ambient soundscapes */}
           {!activeAudioSource && (
-            <div className="pt-2 border-t border-white/15 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-              <span className="text-[#cfe1d9] flex items-center gap-1">
-                <span>Música de fondo:</span>
-              </span>
-              <div className="flex items-center gap-1.5">
+            <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2 text-[10px] text-[#cfe1d9]">
+              <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                <span className="text-[#a5c2b6]">Fondo:</span>
                 {[
                   { name: 'Arroyo', url: '/sounds/arroyo-bosque.mp3' },
                   { name: 'Cuencos', url: '/sounds/cuencos-tibetanos.mp3' },
-                  { name: 'Aves', url: '/sounds/canto-aves-bosque.mp3' },
                   { name: 'Lluvia', url: '/sounds/lluvia-profunda.mp3' },
-                  { name: 'Mantra', url: '/sounds/om-namah-shivaya.mp3' },
+                  { name: 'Silencio', url: '' },
                 ].map((sound) => (
                   <button
                     key={sound.name}
-                    onClick={() => setSelectedAmbience(sound.url)}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                    onClick={() => {
+                      setSelectedAmbience(sound.url);
+                      if (isPlaying && !isPaused) {
+                        handleStopVoice();
+                        setTimeout(() => handleTogglePlay(selectedWeek), 100);
+                      }
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] transition-all cursor-pointer ${
                       selectedAmbience === sound.url
-                        ? 'bg-[#ead08f] text-[#0c221c]'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                        ? 'bg-[#ead08f] text-[#0a1e17] font-semibold'
+                        : 'bg-white/5 text-white/70 hover:bg-white/15'
                     }`}
                   >
                     {sound.name}
                   </button>
                 ))}
+              </div>
+
+              <div className="text-[10px] text-[#ead08f] flex items-center gap-1 font-medium">
+                <Sparkles className="w-3 h-3 text-[#ead08f]" />
+                <span>Voz Suave y Cálida (es-US)</span>
               </div>
             </div>
           )}
@@ -575,117 +504,6 @@ export const WeeklyReleases: React.FC<WeeklyReleasesProps> = ({
           </div>
         )}
 
-        {/* ESTUDIO DE GRABACIÓN PARA PERSONALIZAR (Subir tu propio audio real) */}
-        <div className="bg-[#f5f9f7] border border-[#bcd7cb] rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Mic className="w-4 h-4 text-[#144436]" />
-              <b className="text-xs font-bold text-[#0e2721]">
-                ¿Grabaste tu propia voz para esta píldora?
-              </b>
-            </div>
-            <button
-              onClick={() => setShowStudio(!showStudio)}
-              className="text-[11px] font-bold text-[#144436] hover:underline cursor-pointer"
-            >
-              {showStudio ? 'Cerrar estudio' : 'Grabar con micrófono o subir enlace'}
-            </button>
-          </div>
-
-          {activeAudioSource && !showStudio && (
-            <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-[#d0e2d9] text-xs">
-              <span className="text-[#1b5e4b] font-bold flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Tu audio propio está activo para esta píldora</span>
-              </span>
-              <button
-                onClick={() => removeCustomAudio(selectedWeek.id)}
-                className="text-rose-600 hover:text-rose-800 p-1 cursor-pointer text-[11px] font-semibold"
-                title="Eliminar audio personalizado y volver a la Voz de Alma"
-              >
-                Volver a Voz de Alma
-              </button>
-            </div>
-          )}
-
-          {showStudio && (
-            <div className="space-y-3 pt-2 border-t border-[#d2dfd8]">
-              <p className="text-[11px] text-[#556961] leading-relaxed">
-                Si grabas el guion con tu celular o micrófono, puedes guardarlo aquí para que reemplace la voz sintética por tu voz humana real:
-              </p>
-
-              {/* Recorder Controls */}
-              <div className="bg-white p-3 rounded-xl border border-[#d2dfd8] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <button
-                    onClick={isRecording ? stopRecordingAudio : startRecordingAudio}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                      isRecording
-                        ? 'bg-rose-600 text-white animate-pulse'
-                        : 'bg-[#0e2721] text-[#ead08f] hover:bg-[#184236]'
-                    }`}
-                  >
-                    {isRecording ? (
-                      <Square className="w-4 h-4 fill-white" />
-                    ) : (
-                      <Mic className="w-4 h-4" />
-                    )}
-                  </button>
-                  <div>
-                    <b className="text-xs text-[#0e2721] block">
-                      {isRecording ? 'Grabando tu voz...' : 'Toca el micrófono para grabar'}
-                    </b>
-                    <span className="text-[10px] text-[#556961]">
-                      {isRecording ? `${recSeconds}s transcurridos` : 'Grabación directa en alta fidelidad'}
-                    </span>
-                  </div>
-                </div>
-
-                {recordedBlobUrl && !isRecording && (
-                  <button
-                    onClick={saveRecordedAudioToWeek}
-                    className="px-3 py-1.5 rounded-xl bg-[#144436] text-[#ead08f] font-bold text-xs hover:bg-[#0e2721] transition-all flex items-center gap-1 shadow-xs cursor-pointer"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Guardar audio</span>
-                  </button>
-                )}
-              </div>
-
-              {recordedBlobUrl && (
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-[#144436]">Escuchar previa grabada:</span>
-                  <audio src={recordedBlobUrl} controls className="w-full h-8" />
-                </div>
-              )}
-
-              {/* Or paste custom URL */}
-              <div className="pt-1 flex gap-2">
-                <input
-                  type="url"
-                  value={customUrlInput}
-                  onChange={(e) => setCustomUrlInput(e.target.value)}
-                  placeholder="O pega enlace de audio (Dropbox, Drive público, MP3)..."
-                  className="flex-1 p-2 text-xs rounded-xl border border-[#d2dfd8] bg-white outline-none focus:border-[#144436]"
-                />
-                <button
-                  onClick={saveRecordedAudioToWeek}
-                  disabled={!customUrlInput.trim()}
-                  className="px-3 py-1.5 rounded-xl bg-[#0e2721] disabled:opacity-40 text-white font-bold text-xs hover:bg-[#183f35] cursor-pointer"
-                >
-                  Asignar URL
-                </button>
-              </div>
-
-              {savedSuccessMsg && (
-                <div className="p-2 bg-emerald-100 text-emerald-800 text-xs rounded-xl font-bold flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5" />
-                  <span>¡Audio guardado exitosamente para la Píldora {selectedWeek.pillNumber || selectedWeek.weekNumber}!</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* CATALOG TIMELINE OF ALL 8 PILLS (4 WEEKS) */}

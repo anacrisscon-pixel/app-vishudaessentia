@@ -18,24 +18,29 @@ export const JourneyHistory: React.FC<JourneyHistoryProps> = ({
 }) => {
   const safeExplorations = Array.isArray(explorations) ? explorations : [];
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showClearAllModal, setShowClearAllModal] = useState<boolean>(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleRequestDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm('¿Deseas eliminar este registro de tu viaje?')) {
-      deleteExploration(id);
-      onRefresh();
-    }
+    setItemToDelete(id);
   };
 
-  const handleClearAll = () => {
-    if (window.confirm('¿Estás seguro/a de que deseas borrar todo tu historial de exploraciones? Esta acción no se puede deshacer.')) {
-      clearAllExplorations();
-      onRefresh();
-    }
+  const handleConfirmDelete = () => {
+    if (!itemToDelete) return;
+    deleteExploration(itemToDelete);
+    setItemToDelete(null);
+    onRefresh();
+  };
+
+  const handleConfirmClearAll = () => {
+    clearAllExplorations();
+    setShowClearAllModal(false);
+    onRefresh();
   };
 
   const formatDate = (isoString: string) => {
@@ -76,8 +81,8 @@ export const JourneyHistory: React.FC<JourneyHistoryProps> = ({
 
         {safeExplorations.length > 0 && (
           <button
-            onClick={handleClearAll}
-            className="text-[11px] text-red-700/80 hover:text-red-700 hover:underline pt-2"
+            onClick={() => setShowClearAllModal(true)}
+            className="text-[11px] text-red-700/80 hover:text-red-700 hover:underline pt-2 cursor-pointer"
           >
             Limpiar todo
           </button>
@@ -97,7 +102,7 @@ export const JourneyHistory: React.FC<JourneyHistoryProps> = ({
           </p>
           <button
             onClick={onStartExploration}
-            className="px-5 py-2.5 rounded-xl bg-[#5b2a63] text-white font-bold text-xs shadow-md"
+            className="px-5 py-2.5 rounded-xl bg-[#5b2a63] text-white font-bold text-xs shadow-md cursor-pointer"
           >
             Comenzar mi primera exploración
           </button>
@@ -122,8 +127,8 @@ export const JourneyHistory: React.FC<JourneyHistoryProps> = ({
                       {item.intensity}/10 intensidad
                     </span>
                     <button
-                      onClick={(e) => handleDelete(e, item.id)}
-                      className="text-[#7d7188] hover:text-red-600 p-1"
+                      onClick={(e) => handleRequestDelete(e, item.id)}
+                      className="text-[#7d7188] hover:text-red-600 p-1 cursor-pointer"
                       title="Eliminar"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -171,6 +176,58 @@ export const JourneyHistory: React.FC<JourneyHistoryProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal Clear All Explorations */}
+      {showClearAllModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#fffdfa] border border-[#d8c8ad] rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3">
+            <h3 className="font-bold text-sm text-[#332a3d]">¿Borrar historial de exploraciones?</h3>
+            <p className="text-xs text-[#7d7188]">
+              Esta acción eliminará todas las indagaciones de 9 pasos guardadas. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setShowClearAllModal(false)}
+                className="flex-1 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmClearAll}
+                className="flex-1 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold"
+              >
+                Sí, borrar todo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Delete Single Exploration */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#fffdfa] border border-[#d8c8ad] rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3">
+            <h3 className="font-bold text-sm text-[#332a3d]">¿Eliminar esta exploración?</h3>
+            <p className="text-xs text-[#7d7188]">
+              Este registro se removerá de tu bitácora de viaje.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setItemToDelete(null)}
+                className="flex-1 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

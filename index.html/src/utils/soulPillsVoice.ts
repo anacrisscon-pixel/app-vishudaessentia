@@ -18,6 +18,8 @@ export class SoulPillsVoicePlayer {
   private isSpeaking: boolean = false;
   private isPaused: boolean = false;
   private selectedVoice: SpeechSynthesisVoice | null = null;
+  private currentPitch: number = 1.18; // Warm, serene, natural feminine pitch
+  private currentRate: number = 0.96; // Un poco más rápido y fluido como pidió el usuario
   private onStateChangeCallback: ((state: { isPlaying: boolean; isPaused: boolean; progressPercent: number; currentSegmentIndex: number; totalSegments: number }) => void) | null = null;
 
   private textSegments: string[] = [];
@@ -34,7 +36,7 @@ export class SoulPillsVoicePlayer {
     }
   }
 
-  // Female voice filters
+  // Female voice filters - prioritized calm, clear, professional female voices
   private static readonly FEMALE_KEYWORDS = [
     'paulina',
     'monica',
@@ -63,6 +65,10 @@ export class SoulPillsVoicePlayer {
     'mia',
     'esther',
     'angela',
+    'jimena',
+    'esperanza',
+    'penelope',
+    'penélope',
     'female',
     'mujer',
     'femenina',
@@ -91,34 +97,71 @@ export class SoulPillsVoicePlayer {
     'gonzalo',
     'julio',
     'roberto',
+    'sergio',
+    'fernando',
+    'javier',
+    'andres',
+    'andrés',
   ];
 
   private initVoices() {
     if (!this.synth) return;
-    const voices = this.synth.getVoices();
     const femaleSpanish = this.getAvailableFemaleSpanishVoices();
 
-    // Pick top female Spanish voice
     if (femaleSpanish.length > 0) {
-      this.selectedVoice = femaleSpanish[0];
-    } else {
-      // Fallback: any Spanish voice not strictly in male list
-      const nonMaleSpanish = voices.find(
+      // 1. Highest priority: Spanish (United States) es-US female voices (e.g., Paulina, Samantha, Victoria, Google US Spanish, etc.)
+      const esUsFemale = femaleSpanish.find(
         (v) =>
-          (v.lang.startsWith('es') || v.lang.includes('es-')) &&
+          (v.lang.toLowerCase() === 'es-us' || v.lang.toLowerCase().includes('es_us')) &&
           !SoulPillsVoicePlayer.MALE_EXCLUSIONS.some((m) => v.name.toLowerCase().includes(m))
       );
-      const anySpanish = voices.find((v) => v.lang.startsWith('es') || v.lang.includes('es-'));
-      this.selectedVoice = nonMaleSpanish || anySpanish || voices[0] || null;
+
+      // 2. High priority natural/neural calm voices
+      const preferred =
+        esUsFemale ||
+        femaleSpanish.find(
+          (v) =>
+            v.name.toLowerCase().includes('paulina') ||
+            v.name.toLowerCase().includes('lucia') ||
+            v.name.toLowerCase().includes('lucía') ||
+            v.name.toLowerCase().includes('sofia') ||
+            v.name.toLowerCase().includes('sofía') ||
+            v.name.toLowerCase().includes('helena') ||
+            v.name.toLowerCase().includes('monica') ||
+            v.name.toLowerCase().includes('mónica') ||
+            v.name.toLowerCase().includes('natural') ||
+            v.name.toLowerCase().includes('neural')
+        );
+      this.selectedVoice = preferred || femaleSpanish[0];
+    } else {
+      const allVoices = this.synth.getVoices();
+      // Look for es-US first even in general list if non-male
+      const esUsNonMale = allVoices.find(
+        (v) =>
+          (v.lang.toLowerCase() === 'es-us' || v.lang.toLowerCase().includes('es_us')) &&
+          !SoulPillsVoicePlayer.MALE_EXCLUSIONS.some((m) => v.name.toLowerCase().includes(m))
+      );
+      const nonMaleSpanish = allVoices.find(
+        (v) =>
+          v.lang.toLowerCase().startsWith('es') &&
+          !SoulPillsVoicePlayer.MALE_EXCLUSIONS.some((m) => v.name.toLowerCase().includes(m))
+      );
+      const anySpanish = allVoices.find((v) => v.lang.toLowerCase().startsWith('es'));
+      this.selectedVoice = esUsNonMale || nonMaleSpanish || anySpanish || allVoices[0] || null;
     }
+  }
+
+  public getAllSpanishVoices(): SpeechSynthesisVoice[] {
+    if (!this.synth) return [];
+    return this.synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith('es'));
   }
 
   public getAvailableFemaleSpanishVoices(): SpeechSynthesisVoice[] {
     if (!this.synth) return [];
     const all = this.synth.getVoices();
-    const spanish = all.filter((v) => v.lang.startsWith('es') || v.lang.includes('es-'));
+    const spanish = all.filter((v) => v.lang.toLowerCase().startsWith('es'));
 
-    // Filter by female names or keywords and exclude known male names
+    // Filter by female names or keywords and strictly exclude male names
     const explicitlyFemale = spanish.filter((v) => {
       const name = v.name.toLowerCase();
       const isMale = SoulPillsVoicePlayer.MALE_EXCLUSIONS.some((m) => name.includes(m));
@@ -130,11 +173,24 @@ export class SoulPillsVoicePlayer {
       return explicitlyFemale;
     }
 
-    // If no explicit keyword matches, return non-male Spanish voices
-    return spanish.filter((v) => {
+    // Secondary fallback: Any Spanish voice that is definitely not male
+    const nonMale = spanish.filter((v) => {
       const name = v.name.toLowerCase();
       return !SoulPillsVoicePlayer.MALE_EXCLUSIONS.some((m) => name.includes(m));
     });
+
+    if (nonMale.length > 0) {
+      return nonMale;
+    }
+
+    // Tertiary fallback: If only generic voices exist, search global voices for female
+    const anyFemale = all.filter((v) => {
+      const name = v.name.toLowerCase();
+      const isMale = SoulPillsVoicePlayer.MALE_EXCLUSIONS.some((m) => name.includes(m));
+      return !isMale && SoulPillsVoicePlayer.FEMALE_KEYWORDS.some((f) => name.includes(f));
+    });
+
+    return anyFemale.length > 0 ? anyFemale : spanish;
   }
 
   public getAvailableSpanishVoices(): SpeechSynthesisVoice[] {
@@ -143,6 +199,10 @@ export class SoulPillsVoicePlayer {
 
   public setVoice(voice: SpeechSynthesisVoice) {
     this.selectedVoice = voice;
+  }
+
+  public setPitch(pitch: number) {
+    this.currentPitch = pitch;
   }
 
   public getSelectedVoice(): SpeechSynthesisVoice | null {
@@ -253,24 +313,32 @@ export class SoulPillsVoicePlayer {
       .replace(/["“”]/g, '')
       .trim();
 
+    // Ensure voices are initialized and female is selected
+    if (!this.selectedVoice) {
+      this.initVoices();
+    }
+
     const utterance = new SpeechSynthesisUtterance(cleanedText);
     if (this.selectedVoice) {
       utterance.voice = this.selectedVoice;
+      utterance.lang = this.selectedVoice.lang || 'es-ES';
+    } else {
+      utterance.lang = 'es-ES';
     }
 
-    // Cadence & Pitch adjustments for warm, gentle, feminine delivery:
-    // Rate: 0.88 (slow, intimate, soothing, warm confident tone)
-    // Pitch: 1.08 (gentle, bright and distinctively feminine resonance)
-    utterance.rate = 0.88;
-    utterance.pitch = 1.08;
+    // Cadence & Pitch adjustments for calm, gentle, warm feminine delivery:
+    // Rate: 0.96 (un poco más rápido y natural, manteniendo la calidez sin sentirse lenta)
+    // Pitch: 1.18 (resonancia femenina cálida y suave)
+    utterance.rate = this.currentRate || 0.96;
+    utterance.pitch = this.currentPitch || 1.18;
     utterance.volume = 1.0;
 
     utterance.onend = () => {
-      // Natural 1.2 second pause between sentences/paragraphs
+      // Natural 1.4 second pause between sentences/paragraphs for calm processing
       this.pauseTimeout = setTimeout(() => {
         this.currentSegmentIndex++;
         this.speakNextSegment();
-      }, 1200);
+      }, 1400);
     };
 
     utterance.onerror = (e) => {

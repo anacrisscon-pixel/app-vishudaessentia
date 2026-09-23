@@ -8,6 +8,7 @@ import {
   addOrUpdateCheckInRecord,
   deleteCheckInRecord,
   resetCheckInHistory,
+  clearCheckInHistory,
   getMoodDefaultScore,
   getCheckInStatus,
 } from '../utils/storage';
@@ -130,7 +131,10 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
   const [formMicro, setFormMicro] = useState<boolean>(true);
   const [formNote, setFormNote] = useState<string>('');
 
-  const checkInStatus = getCheckInStatus();
+  const [checkInStatus, setCheckInStatus] = useState(() => getCheckInStatus());
+  const [showClearModal, setShowClearModal] = useState<boolean>(false);
+  const [showResetModal, setShowResetModal] = useState<boolean>(false);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
   // Filter history by time range
   const filteredHistory = useMemo(() => {
@@ -272,24 +276,46 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
       note: formNote.trim(),
     });
     setHistory(updated);
+    setCheckInStatus(getCheckInStatus());
     setShowAddModal(false);
     setFormNote('');
+    setExportMessage('Día registrado en tu bitácora correctamente.');
+    setTimeout(() => setExportMessage(null), 3000);
   };
 
   // Handle Delete Entry
-  const handleDeleteEntry = (dateOrId: string) => {
-    if (confirm('¿Deseas eliminar este registro de tu bitácora emocional?')) {
-      const updated = deleteCheckInRecord(dateOrId);
-      setHistory(updated);
-    }
+  const handleRequestDelete = (dateOrId: string) => {
+    setEntryToDelete(dateOrId);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!entryToDelete) return;
+    const updated = deleteCheckInRecord(entryToDelete);
+    setHistory(updated);
+    setCheckInStatus(getCheckInStatus());
+    setEntryToDelete(null);
+    setExportMessage('Registro eliminado de la bitácora.');
+    setTimeout(() => setExportMessage(null), 3000);
   };
 
   // Handle Reset to Demo Data
-  const handleResetData = () => {
-    if (confirm('¿Deseas restablecer el historial con datos de muestra equilibrados para 14 días?')) {
-      const fresh = resetCheckInHistory();
-      setHistory(fresh);
-    }
+  const handleExecuteResetData = () => {
+    const fresh = resetCheckInHistory();
+    setHistory(fresh);
+    setCheckInStatus(getCheckInStatus());
+    setShowResetModal(false);
+    setExportMessage('🌿 Datos de muestra equilibrados cargados (14 días).');
+    setTimeout(() => setExportMessage(null), 4000);
+  };
+
+  // Handle Clear All Data to Zero
+  const handleExecuteClearToZero = () => {
+    const empty = clearCheckInHistory();
+    setHistory(empty);
+    setCheckInStatus(getCheckInStatus());
+    setShowClearModal(false);
+    setExportMessage('✨ Bitácora puesta en ceros. Todas las estadísticas y racha han quedado en 0.');
+    setTimeout(() => setExportMessage(null), 5000);
   };
 
   // Handle Export Data to CSV/TXT
@@ -368,6 +394,15 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowClearModal(true)}
+            className="px-2.5 py-1.5 rounded-full bg-rose-50 border border-rose-300 hover:bg-rose-100 text-rose-800 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+            title="Vaciar la bitácora y poner todas las estadísticas en ceros"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+            <span>Poner en ceros</span>
+          </button>
+
           <button
             onClick={() => setShowAddModal(true)}
             className="px-2.5 py-1.5 rounded-full bg-[#144436] hover:bg-[#0c2b22] text-[#ead08f] text-xs font-bold flex items-center gap-1 shadow-xs transition-all cursor-pointer"
@@ -468,7 +503,9 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
             />
           </div>
           <span className="text-[10px] text-[#556960] block truncate">
-            {metrics.avgRegulation >= 7.5
+            {metrics.totalDays === 0
+              ? '🌱 En ceros · Lista para tu 1er registro'
+              : metrics.avgRegulation >= 7.5
               ? '✨ En equilibrio sereno y vital'
               : metrics.avgRegulation >= 5.5
               ? '⚖️ Regulación moderada'
@@ -485,16 +522,16 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
             <Smile className="w-3.5 h-3.5 text-[#94742f]" />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-2xl">{currentPredomConfig.emoji}</span>
+            <span className="text-2xl">{metrics.totalDays === 0 ? '🌱' : currentPredomConfig.emoji}</span>
             <b className="text-sm font-bold text-[#112d24] truncate">
-              {currentPredomConfig.label}
+              {metrics.totalDays === 0 ? 'Sin registros' : currentPredomConfig.label}
             </b>
           </div>
           <span className="text-[11px] font-bold text-[#144436] block">
-            {metrics.predominantPct}% de los días
+            {metrics.totalDays === 0 ? '0% registrado' : `${metrics.predominantPct}% de los días`}
           </span>
           <span className="text-[10px] text-[#556960] block truncate">
-            {currentPredomConfig.valence}
+            {metrics.totalDays === 0 ? 'Comienza tu registro hoy' : currentPredomConfig.valence}
           </span>
         </div>
 
@@ -546,7 +583,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
             <span>{metrics.totalDays} entradas en total</span>
           </div>
           <span className="text-[10px] text-[#556960] block truncate">
-            Constancia presente sin exigencia
+            {metrics.streak === 0 ? '🌱 Inicia hoy tu primera racha' : 'Constancia presente sin exigencia'}
           </span>
         </div>
       </div>
@@ -622,58 +659,88 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
             </div>
           </div>
 
-          {/* Recharts Area Container */}
-          <div className="w-full h-60 pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorRegulation" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#144436" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#c5a059" stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="dateStr"
-                  tickLine={false}
-                  axisLine={{ stroke: '#e2d7c5' }}
-                  tick={{ fill: '#6c7a72', fontSize: 10 }}
-                />
-                <YAxis
-                  domain={[0, 10]}
-                  ticks={[2, 4, 6, 8, 10]}
-                  tickLine={false}
-                  axisLine={{ stroke: '#e2d7c5' }}
-                  tick={{ fill: '#6c7a72', fontSize: 10 }}
-                />
-                <Tooltip content={<CustomTrendTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="energyLevel"
-                  stroke="#144436"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#colorRegulation)"
-                  activeDot={{ r: 6, fill: '#ead08f', stroke: '#144436', strokeWidth: 2 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {/* Recharts Area Container or Empty State */}
+          {filteredHistory.length === 0 ? (
+            <div className="py-10 text-center space-y-3 bg-[#fdfcf9] rounded-2xl border border-dashed border-[#dfd4c2]">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-[#112d24]">Bitácora en ceros (0 registros)</p>
+                <p className="text-[11px] text-[#556960] max-w-xs mx-auto">
+                  Has vaciado la bitácora. Registra tu estado de hoy para ver tu primera curva o restaura los datos de muestra.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  onClick={onGoCheckIn}
+                  className="px-3 py-1.5 rounded-xl bg-[#144436] text-[#ead08f] text-xs font-bold shadow-xs cursor-pointer hover:bg-[#0d2a21]"
+                >
+                  Check-In de Hoy
+                </button>
+                <button
+                  onClick={() => setShowResetModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-[#ead08f]/30 text-[#634e1e] text-xs font-bold cursor-pointer hover:bg-[#ead08f]/50"
+                >
+                  Ver con datos de muestra
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="w-full h-60 pt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trendChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRegulation" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#144436" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#c5a059" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="dateStr"
+                      tickLine={false}
+                      axisLine={{ stroke: '#e2d7c5' }}
+                      tick={{ fill: '#6c7a72', fontSize: 10 }}
+                    />
+                    <YAxis
+                      domain={[0, 10]}
+                      ticks={[2, 4, 6, 8, 10]}
+                      tickLine={false}
+                      axisLine={{ stroke: '#e2d7c5' }}
+                      tick={{ fill: '#6c7a72', fontSize: 10 }}
+                    />
+                    <Tooltip content={<CustomTrendTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="energyLevel"
+                      stroke="#144436"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#colorRegulation)"
+                      activeDot={{ r: 6, fill: '#ead08f', stroke: '#144436', strokeWidth: 2 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
 
-          {/* Chart Guide Footer */}
-          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#ece2d4] text-[10px] text-[#6c7a72]">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              <span>1-4: Sobrecarga / Agotamiento</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-500" />
-              <span>5-7: Escucha reflexiva</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-600" />
-              <span>8-10: Calma y vitalidad</span>
-            </div>
-          </div>
+              {/* Chart Guide Footer */}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#ece2d4] text-[10px] text-[#6c7a72]">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span>1-4: Sobrecarga / Agotamiento</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-teal-500" />
+                  <span>5-7: Escucha reflexiva</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                  <span>8-10: Calma y vitalidad</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -689,7 +756,34 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 items-center gap-4">
+          {filteredHistory.length === 0 ? (
+            <div className="py-10 text-center space-y-3 bg-[#fdfcf9] rounded-2xl border border-dashed border-[#dfd4c2]">
+              <div className="w-10 h-10 rounded-full bg-[#ead08f]/30 text-[#634e1e] flex items-center justify-center mx-auto">
+                <Smile className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-[#112d24]">Sin datos para mostrar distribución</p>
+                <p className="text-[11px] text-[#556960] max-w-xs mx-auto">
+                  Completa check-ins para ver la proporción de tus estados emocionales.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  onClick={onGoCheckIn}
+                  className="px-3 py-1.5 rounded-xl bg-[#144436] text-[#ead08f] text-xs font-bold shadow-xs cursor-pointer hover:bg-[#0d2a21]"
+                >
+                  Check-In de Hoy
+                </button>
+                <button
+                  onClick={() => setShowResetModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-[#ead08f]/30 text-[#634e1e] text-xs font-bold cursor-pointer hover:bg-[#ead08f]/50"
+                >
+                  Ver con datos de muestra
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 items-center gap-4">
             {/* Pie Chart */}
             <div className="w-full h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -744,6 +838,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
               })}
             </div>
           </div>
+          )}
         </div>
       )}
 
@@ -766,45 +861,75 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
               <span>Evidencia Somática de tu Proceso</span>
             </div>
             <p className="text-xs text-[#cfe1d9] leading-relaxed">
-              En los días en que completaste tu micro-reseteo de 30 segundos, tu nivel de regulación promedio fue de{' '}
-              <b className="text-[#ead08f]">
-                {metrics.microImpactDiff >= 0 ? `+${metrics.microImpactDiff} puntos más alto` : 'mayor estabilidad'}
-              </b>
-              . Una sola pausa diaria previene que la tensión acumulada se convierta en sobrecarga.
+              {filteredHistory.length === 0
+                ? 'Cuando registres días completando micro-reseteos de 30 segundos, aquí verás la comparativa de cómo impactan tu calma.'
+                : `En los días en que completaste tu micro-reseteo de 30 segundos, tu nivel de regulación promedio fue de ${
+                    metrics.microImpactDiff >= 0 ? `+${metrics.microImpactDiff} puntos más alto` : 'mayor estabilidad'
+                  }. Una sola pausa diaria previene que la tensión acumulada se convierta en sobrecarga.`}
             </p>
           </div>
 
-          {/* Bar Chart */}
-          <div className="w-full h-56 pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={somaticChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: '#e2d7c5' }} tick={{ fill: '#6c7a72', fontSize: 10 }} />
-                <YAxis domain={[0, 10]} ticks={[2, 4, 6, 8, 10]} tickLine={false} axisLine={{ stroke: '#e2d7c5' }} tick={{ fill: '#6c7a72', fontSize: 10 }} />
-                <Tooltip
-                  formatter={(val: any, _name: any, item: any) => [
-                    `${val}/10 (${item.payload.label})`,
-                    'Nivel de Regulación',
-                  ]}
-                />
-                <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                  {somaticChartData.map((entry, index) => (
-                    <Cell key={`bar-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {/* Bar Chart or Empty State */}
+          {filteredHistory.length === 0 ? (
+            <div className="py-8 text-center space-y-3 bg-[#fdfcf9] rounded-2xl border border-dashed border-[#dfd4c2]">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-[#112d24]">Sin pausas registradas en este período</p>
+                <p className="text-[11px] text-[#556960] max-w-xs mx-auto">
+                  Registra un check-in marcando tu pausa de 30 segundos o explora con los datos de muestra.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  onClick={onGoCheckIn}
+                  className="px-3 py-1.5 rounded-xl bg-[#144436] text-[#ead08f] text-xs font-bold shadow-xs cursor-pointer hover:bg-[#0d2a21]"
+                >
+                  Check-In de Hoy
+                </button>
+                <button
+                  onClick={() => setShowResetModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-[#ead08f]/30 text-[#634e1e] text-xs font-bold cursor-pointer hover:bg-[#ead08f]/50"
+                >
+                  Ver con datos de muestra
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="w-full h-56 pt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={somaticChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: '#e2d7c5' }} tick={{ fill: '#6c7a72', fontSize: 10 }} />
+                    <YAxis domain={[0, 10]} ticks={[2, 4, 6, 8, 10]} tickLine={false} axisLine={{ stroke: '#e2d7c5' }} tick={{ fill: '#6c7a72', fontSize: 10 }} />
+                    <Tooltip
+                      formatter={(val: any, _name: any, item: any) => [
+                        `${val}/10 (${item.payload.label})`,
+                        'Nivel de Regulación',
+                      ]}
+                    />
+                    <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+                      {somaticChartData.map((entry, index) => (
+                        <Cell key={`bar-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
 
-          <div className="flex items-center justify-center gap-6 pt-2 border-t border-[#ece2d4] text-[11px]">
-            <div className="flex items-center gap-1.5 text-emerald-800 font-bold">
-              <span className="w-3 h-3 rounded-sm bg-emerald-600" />
-              <span>Con Pausa de 30s</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-600 font-bold">
-              <span className="w-3 h-3 rounded-sm bg-slate-400" />
-              <span>Sin Pausa</span>
-            </div>
-          </div>
+              <div className="flex items-center justify-center gap-6 pt-2 border-t border-[#ece2d4] text-[11px]">
+                <div className="flex items-center gap-1.5 text-emerald-800 font-bold">
+                  <span className="w-3 h-3 rounded-sm bg-emerald-600" />
+                  <span>Con Pausa de 30s</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-600 font-bold">
+                  <span className="w-3 h-3 rounded-sm bg-slate-400" />
+                  <span>Sin Pausa</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -820,14 +945,24 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                 {filteredHistory.length} registros en el período seleccionado
               </p>
             </div>
-            <button
-              onClick={handleResetData}
-              className="text-[11px] text-[#94742f] hover:underline flex items-center gap-1 font-semibold"
-              title="Restaurar datos de muestra equilibrados"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Restaurar muestra</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowClearModal(true)}
+                className="text-[11px] text-rose-700 hover:text-rose-900 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+                title="Vaciar todos los registros y comenzar desde cero"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Poner en ceros</span>
+              </button>
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="text-[11px] text-[#94742f] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+                title="Restaurar datos de muestra equilibrados"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Datos de muestra</span>
+              </button>
+            </div>
           </div>
 
           {/* List of records */}
@@ -895,8 +1030,8 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                       </div>
 
                       <button
-                        onClick={() => handleDeleteEntry(record.id || record.date)}
-                        className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        onClick={() => handleRequestDelete(record.id || record.date)}
+                        className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                         title="Eliminar registro"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1085,18 +1220,136 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2 px-3 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold transition-colors"
+                  className="flex-1 py-2 px-3 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-3 rounded-xl bg-[#144436] hover:bg-[#0d2e24] text-[#ead08f] font-bold shadow-md transition-all"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[#144436] hover:bg-[#0d2e24] text-[#ead08f] font-bold shadow-md transition-all cursor-pointer"
                 >
                   Guardar
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirm Clear To Zero */}
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#fffdfa] border border-[#dfd4c2] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="font-serif font-bold text-lg text-[#112d24]">
+                ¿Poner bitácora en ceros?
+              </h3>
+              <p className="text-xs text-[#556960] leading-relaxed">
+                Esta acción vaciará todos los registros y dejará las estadísticas, promedios y racha en <b>0</b>. Podrás comenzar a registrar tu camino desde hoy con una bitácora limpia y personal.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
+              <Sparkles className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <span>
+                Nota: Si alguna vez deseas volver a explorar cómo lucen los gráficos, podrás pulsar <b>"Datos de muestra"</b> en cualquier momento.
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowClearModal(false)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteClearToZero}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                Sí, poner en ceros
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirm Reset to Sample Data */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#fffdfa] border border-[#dfd4c2] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="w-12 h-12 rounded-2xl bg-[#ead08f]/30 text-[#634e1e] flex items-center justify-center mx-auto">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="font-serif font-bold text-lg text-[#112d24]">
+                ¿Cargar datos de muestra?
+              </h3>
+              <p className="text-xs text-[#556960] leading-relaxed">
+                Se cargarán 14 días de datos demostrativos equilibrados para que puedas apreciar las curvas de autorregulación y distribución emocional.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetModal(false)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteResetData}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-[#144436] hover:bg-[#0e2721] text-[#ead08f] text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                Cargar muestra
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirm Delete Specific Entry */}
+      {entryToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#fffdfa] border border-[#dfd4c2] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="font-serif font-bold text-base text-[#112d24]">
+                ¿Eliminar este registro?
+              </h3>
+              <p className="text-xs text-[#556960] leading-relaxed">
+                Esta entrada se removerá de tu bitácora emocional y las estadísticas se recalcularán automáticamente.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setEntryToDelete(null)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
         </div>
       )}

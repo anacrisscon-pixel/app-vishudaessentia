@@ -78,7 +78,7 @@ export const PatternIndex: React.FC<PatternIndexProps> = ({
           className="py-2.5 px-2 rounded-xl text-xs font-bold text-[#553b5e] hover:bg-white/60 transition-all flex flex-col sm:flex-row items-center justify-center gap-1 text-center cursor-pointer"
         >
           <Users className="w-4 h-4 text-[#5b2a63]" />
-          <span>14 Casos</span>
+          <span>30 Casos</span>
         </button>
       </div>
 

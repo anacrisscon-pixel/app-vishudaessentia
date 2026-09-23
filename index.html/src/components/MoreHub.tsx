@@ -284,7 +284,7 @@ export const MoreHub: React.FC<MoreHubProps> = ({ onNavigate }) => {
               </div>
               <div>
                 <b className="text-xs font-bold text-[#0e2721] block group-hover:text-[#1b5e4b]">
-                  14 Casos de la Vida Real
+                  30 Casos de la Vida Real
                 </b>
                 <span className="text-[11px] text-[#556961]">
                   Situaciones cotidianas y de pareja con video y meditación

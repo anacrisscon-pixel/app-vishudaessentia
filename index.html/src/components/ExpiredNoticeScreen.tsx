@@ -1,7 +1,6 @@
 import React from 'react';
 import { CreditCard, ExternalLink, ShieldAlert, Sparkles, RefreshCw, Smartphone, KeyRound, MessageCircle } from 'lucide-react';
 import { MembershipData } from '../utils/storage';
-import { openWompiCheckout } from '../config/payments';
 
 interface ExpiredNoticeScreenProps {
   membership: MembershipData;
@@ -14,6 +13,10 @@ export const ExpiredNoticeScreen: React.FC<ExpiredNoticeScreenProps> = ({
   onGoToActivation,
   onDismissToExploreFree,
 }) => {
+  const WOMPI_LINK =
+    (import.meta as any).env?.VITE_WOMPI_PAYMENT_URL ||
+    'https://checkout.wompi.co/l/VISHUDA_CONTINUO';
+
   const WHATSAPP_SUPPORT_URL =
     (import.meta as any).env?.VITE_WHATSAPP_SUPPORT_URL ||
     'https://wa.me/?text=' +
@@ -22,7 +25,7 @@ export const ExpiredNoticeScreen: React.FC<ExpiredNoticeScreenProps> = ({
       );
 
   const handlePayWompi = () => {
-    openWompiCheckout();
+    window.open(WOMPI_LINK, '_blank');
   };
 
   const handleOpenWhatsApp = () => {
@@ -58,7 +61,7 @@ export const ExpiredNoticeScreen: React.FC<ExpiredNoticeScreenProps> = ({
             Tu Acompañamiento ha Expirado
           </h1>
           <p className="text-xs text-[#52665e] mt-2 leading-relaxed">
-            Tu ciclo finalizó el <b>{formatDate(membership.expiresAt)}</b>. Tus reflexiones y tu diario siguen seguros. Los lanzamientos semanales inéditos, los 14 casos y el chat con el Espejo IA han entrado en pausa.
+            Tu ciclo finalizó el <b>{formatDate(membership.expiresAt)}</b>. Tus reflexiones y tu diario siguen seguros. Los lanzamientos semanales inéditos, los 30 Casos de la Vida Real y el chat con el Espejo IA han entrado en pausa.
           </p>
         </div>
 
@@ -105,7 +108,7 @@ export const ExpiredNoticeScreen: React.FC<ExpiredNoticeScreenProps> = ({
           </li>
           <li className="flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-[#c5a059] flex-shrink-0 mt-0.5" />
-            <span><b>14 Casos Reales:</b> Desglose clínico y espiritual de detonantes, mecanismos y heridas.</span>
+            <span><b>30 Casos de la Vida Real:</b> Desglose clínico y espiritual de detonantes, mecanismos y heridas.</span>
           </li>
           <li className="flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-[#c5a059] flex-shrink-0 mt-0.5" />

@@ -110,13 +110,15 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ onBack }) => {
           <span>Volver al inicio</span>
         </button>
 
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="text-xs font-bold text-[#144436] flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#bcd7cb] bg-white shadow-2xs hover:bg-[#f3f7f5] transition-all cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5 text-[#144436]" />
-          <span>Añadir / Sincronizar Video</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="text-xs font-bold text-white bg-[#cc0000] hover:bg-[#aa0000] flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-xs transition-all cursor-pointer"
+          >
+            <Youtube className="w-3.5 h-3.5 text-white" />
+            <span>+ Sincronizar Video</span>
+          </button>
+        </div>
       </div>
 
       {/* Title section */}

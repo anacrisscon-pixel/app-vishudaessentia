@@ -225,9 +225,9 @@ export function generateInitialCheckInHistory(): DailyCheckInRecord[] {
 export function getCheckInHistory(): DailyCheckInRecord[] {
   try {
     const raw = safeStorage.getItem(STORAGE_KEYS.CHECKIN_HISTORY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       }
     }
@@ -235,10 +235,20 @@ export function getCheckInHistory(): DailyCheckInRecord[] {
     console.error('Error loading checkin history:', e);
   }
 
-  // Seed default history so user immediately has insights
+  // Seed default history on first fresh load so user can explore demo insights
   const initial = generateInitialCheckInHistory();
   safeStorage.setItem(STORAGE_KEYS.CHECKIN_HISTORY, JSON.stringify(initial));
   return initial;
+}
+
+export function clearCheckInHistory(): DailyCheckInRecord[] {
+  safeStorage.setItem(STORAGE_KEYS.CHECKIN_HISTORY, JSON.stringify([]));
+  safeStorage.removeItem(STORAGE_KEYS.CHECKIN_DATA);
+  safeStorage.setItem(STORAGE_KEYS.CHECKIN_STREAK, '0');
+  safeStorage.removeItem(STORAGE_KEYS.CHECKIN_LAST_DATE);
+  safeStorage.removeItem(STORAGE_KEYS.TODAY_MOOD);
+  safeStorage.removeItem(STORAGE_KEYS.TODAY_MOOD_DATE);
+  return [];
 }
 
 export function saveCheckInHistory(records: DailyCheckInRecord[]): void {
